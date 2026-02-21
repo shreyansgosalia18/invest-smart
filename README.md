@@ -4,6 +4,12 @@
 
 ---
 
+## 🏆 Hackathon Submission Links
+
+* **Public Git Repository:** [https://github.com/shreyansgosalia18/invest-smart](https://github.com/shreyansgosalia18/invest-smart)
+* **Public Docker Image:** [https://hub.docker.com/r/shreyans18/blk-hacking-ind-shreyans](https://hub.docker.com/r/shreyans18/blk-hacking-ind-shreyans)
+* **Video Demonstration:** [https://drive.google.com/drive/u/0/folders/16dhIU6CbO4msa6s9Ftrc_L27zH8k29BH](https://drive.google.com/drive/u/0/folders/16dhIU6CbO4msa6s9Ftrc_L27zH8k29BH)
+
 ## Quick Start
 
 ### Prerequisites
@@ -19,6 +25,14 @@ java -jar target/invest-smart.jar
 Application starts on **http://localhost:5477**
 
 ### Run with Docker
+
+**Option 1: Run the Pre-built Public Image (Fastest)**
+You can directly pull and run the published submission image from Docker Hub:
+```bash
+docker run -p 5477:5477 shreyans18/blk-hacking-ind-shreyans:latest
+```
+Option 2: Build and Run Locally
+If you prefer to build the image directly from the source code, use Docker Compose:
 ```bash
 docker compose up --build
 ```
