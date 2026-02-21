@@ -1,0 +1,515 @@
+{
+  "endpoint_1_parse": {
+    "description": "POST /blackrock/challenge/v1/transactions:parse",
+
+    "test_1_problem_statement": {
+      "name": "Problem Statement Example",
+      "input": [
+        {"date": "2023-10-12 20:15:30", "amount": 250},
+        {"date": "2023-02-28 15:49:20", "amount": 375},
+        {"date": "2023-07-01 21:59:00", "amount": 620},
+        {"date": "2023-12-17 08:09:45", "amount": 480}
+      ],
+      "expected_output": [
+        {"date": "2023-10-12 20:15:30", "amount": 250, "ceiling": 300, "remanent": 50},
+        {"date": "2023-02-28 15:49:20", "amount": 375, "ceiling": 400, "remanent": 25},
+        {"date": "2023-07-01 21:59:00", "amount": 620, "ceiling": 700, "remanent": 80},
+        {"date": "2023-12-17 08:09:45", "amount": 480, "ceiling": 500, "remanent": 20}
+      ]
+    },
+
+    "test_2_exact_multiple": {
+      "name": "Exact Multiple of 100 — remanent should be 0",
+      "input": [
+        {"date": "2023-01-01 00:00:00", "amount": 500},
+        {"date": "2023-06-15 12:00:00", "amount": 1000},
+        {"date": "2023-12-31 23:59:59", "amount": 100}
+      ],
+      "expected_output": [
+        {"date": "2023-01-01 00:00:00", "amount": 500, "ceiling": 500, "remanent": 0},
+        {"date": "2023-06-15 12:00:00", "amount": 1000, "ceiling": 1000, "remanent": 0},
+        {"date": "2023-12-31 23:59:59", "amount": 100, "ceiling": 100, "remanent": 0}
+      ]
+    },
+
+    "test_3_small_amounts": {
+      "name": "Small Amounts — amount < 100",
+      "input": [
+        {"date": "2023-03-10 10:00:00", "amount": 1},
+        {"date": "2023-03-10 11:00:00", "amount": 50},
+        {"date": "2023-03-10 12:00:00", "amount": 99}
+      ],
+      "expected_output": [
+        {"date": "2023-03-10 10:00:00", "amount": 1, "ceiling": 100, "remanent": 99},
+        {"date": "2023-03-10 11:00:00", "amount": 50, "ceiling": 100, "remanent": 50},
+        {"date": "2023-03-10 12:00:00", "amount": 99, "ceiling": 100, "remanent": 1}
+      ]
+    },
+
+    "test_4_large_amounts": {
+      "name": "Large Amounts — near constraint boundary",
+      "input": [
+        {"date": "2023-05-01 08:00:00", "amount": 499999},
+        {"date": "2023-05-02 08:00:00", "amount": 499901}
+      ],
+      "expected_output": [
+        {"date": "2023-05-01 08:00:00", "amount": 499999, "ceiling": 500000, "remanent": 1},
+        {"date": "2023-05-02 08:00:00", "amount": 499901, "ceiling": 500000, "remanent": 99}
+      ]
+    },
+
+    "test_5_empty_list": {
+      "name": "Empty Input",
+      "input": [],
+      "expected_output": []
+    },
+
+    "test_6_zero_amount": {
+      "name": "Zero Amount",
+      "input": [
+        {"date": "2023-08-15 14:30:00", "amount": 0}
+      ],
+      "expected_output": [
+        {"date": "2023-08-15 14:30:00", "amount": 0, "ceiling": 0, "remanent": 0}
+      ]
+    }
+  },
+
+  "endpoint_2_validator": {
+    "description": "POST /blackrock/challenge/v1/transactions:validator",
+
+    "test_1_problem_statement": {
+      "name": "Problem Statement — 3 valid, 1 negative",
+      "input": {
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-01-15 10:30:00", "amount": 2000, "ceiling": 300, "remanent": 50},
+          {"date": "2023-03-20 14:45:00", "amount": 3500, "ceiling": 400, "remanent": 70},
+          {"date": "2023-06-10 09:15:00", "amount": 1500, "ceiling": 200, "remanent": 30},
+          {"date": "2023-07-10 09:15:00", "amount": -250, "ceiling": 200, "remanent": 30}
+        ]
+      },
+      "expected": "3 valid, 1 invalid (negative)"
+    },
+
+    "test_2_all_valid": {
+      "name": "All Valid — no negatives, no duplicates",
+      "input": {
+        "wage": 80000,
+        "transactions": [
+          {"date": "2023-01-01 08:00:00", "amount": 100, "ceiling": 100, "remanent": 0},
+          {"date": "2023-02-01 08:00:00", "amount": 200, "ceiling": 200, "remanent": 0},
+          {"date": "2023-03-01 08:00:00", "amount": 300, "ceiling": 300, "remanent": 0}
+        ]
+      },
+      "expected": "3 valid, 0 invalid"
+    },
+
+    "test_3_all_invalid": {
+      "name": "All Invalid — mixed negatives and duplicates",
+      "input": {
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-01-01 08:00:00", "amount": -100, "ceiling": 100, "remanent": 0},
+          {"date": "2023-02-01 08:00:00", "amount": -500, "ceiling": 500, "remanent": 0},
+          {"date": "2023-03-01 08:00:00", "amount": 250, "ceiling": 300, "remanent": 50},
+          {"date": "2023-03-01 08:00:00", "amount": 250, "ceiling": 300, "remanent": 50}
+        ]
+      },
+      "expected": "1 valid (first 250), 3 invalid (2 negative + 1 duplicate)"
+    },
+
+    "test_4_multiple_duplicates": {
+      "name": "Triple Duplicate — only first survives",
+      "input": {
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-06-15 12:00:00", "amount": 999, "ceiling": 1000, "remanent": 1},
+          {"date": "2023-06-15 12:00:00", "amount": 999, "ceiling": 1000, "remanent": 1},
+          {"date": "2023-06-15 12:00:00", "amount": 999, "ceiling": 1000, "remanent": 1}
+        ]
+      },
+      "expected": "1 valid, 2 invalid (duplicates)"
+    },
+
+    "test_5_same_date_different_amount": {
+      "name": "Same Date, Different Amount — NOT duplicates",
+      "input": {
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-06-15 12:00:00", "amount": 100, "ceiling": 100, "remanent": 0},
+          {"date": "2023-06-15 12:00:00", "amount": 200, "ceiling": 200, "remanent": 0}
+        ]
+      },
+      "expected": "2 valid, 0 invalid (different amounts = different transactions)"
+    },
+
+    "test_6_empty": {
+      "name": "Empty Transaction List",
+      "input": {
+        "wage": 50000,
+        "transactions": []
+      },
+      "expected": "0 valid, 0 invalid"
+    }
+  },
+
+  "endpoint_3_filter": {
+    "description": "POST /blackrock/challenge/v1/transactions:filter",
+
+    "test_1_problem_statement": {
+      "name": "Problem Statement — q=0 July, p=30 Oct-Dec",
+      "input": {
+        "q": [{"fixed": 0, "start": "2023-07-01 00:00:00", "end": "2023-07-31 23:59:59"}],
+        "p": [{"extra": 30, "start": "2023-10-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-02-28 15:49:20", "amount": 375},
+          {"date": "2023-07-15 10:30:00", "amount": 620},
+          {"date": "2023-10-12 20:15:30", "amount": 250},
+          {"date": "2023-10-12 20:15:30", "amount": 250},
+          {"date": "2023-12-17 08:09:45", "amount": -480}
+        ]
+      },
+      "expected": {
+        "valid": [
+          {"remanent": 25, "inkPeriod": true, "note": "Feb 28 — no q/p applies"},
+          {"remanent": 0, "inkPeriod": true, "note": "Jul 15 — q sets to 0"},
+          {"remanent": 80, "inkPeriod": true, "note": "Oct 12 — remanent 50 + p extra 30"}
+        ],
+        "invalid": ["duplicate Oct 12", "negative -480"]
+      }
+    },
+
+    "test_2_q_latest_start_wins": {
+      "name": "Q Conflict — Latest Start Date Wins",
+      "input": {
+        "q": [
+          {"fixed": 100, "start": "2023-06-01 00:00:00", "end": "2023-08-31 23:59:59"},
+          {"fixed": 200, "start": "2023-07-01 00:00:00", "end": "2023-07-31 23:59:59"}
+        ],
+        "p": [],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-07-15 12:00:00", "amount": 250}
+        ]
+      },
+      "expected": "remanent = 200 (second q starts Jul 1, which is later than Jun 1)"
+    },
+
+    "test_3_q_first_in_list_tiebreak": {
+      "name": "Q Tie — Same Start Date, First In List Wins",
+      "input": {
+        "q": [
+          {"fixed": 100, "start": "2023-07-01 00:00:00", "end": "2023-07-31 23:59:59"},
+          {"fixed": 999, "start": "2023-07-01 00:00:00", "end": "2023-08-31 23:59:59"}
+        ],
+        "p": [],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-07-15 12:00:00", "amount": 250}
+        ]
+      },
+      "expected": "remanent = 100 (same start date, first in list wins)"
+    },
+
+    "test_4_p_stacking": {
+      "name": "P Stacking — Multiple P Periods Add Up",
+      "input": {
+        "q": [],
+        "p": [
+          {"extra": 10, "start": "2023-10-01 00:00:00", "end": "2023-12-31 23:59:59"},
+          {"extra": 20, "start": "2023-10-01 00:00:00", "end": "2023-11-30 23:59:59"},
+          {"extra": 5, "start": "2023-09-01 00:00:00", "end": "2023-10-31 23:59:59"}
+        ],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-10-15 12:00:00", "amount": 250}
+        ]
+      },
+      "expected": "remanent = 50 + 10 + 20 + 5 = 85 (all 3 p periods match Oct 15)"
+    },
+
+    "test_5_q_then_p_interaction": {
+      "name": "Q Then P — Q Replaces, P Adds On Top",
+      "input": {
+        "q": [{"fixed": 0, "start": "2023-10-01 00:00:00", "end": "2023-10-31 23:59:59"}],
+        "p": [{"extra": 25, "start": "2023-10-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-10-15 12:00:00", "amount": 250}
+        ]
+      },
+      "expected": "remanent = 0 (q) + 25 (p) = 25"
+    },
+
+    "test_6_transaction_outside_k": {
+      "name": "Transaction Outside K Period — inkPeriod = false",
+      "input": {
+        "q": [],
+        "p": [],
+        "k": [{"start": "2023-06-01 00:00:00", "end": "2023-08-31 23:59:59"}],
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-03-15 12:00:00", "amount": 250},
+          {"date": "2023-07-15 12:00:00", "amount": 350}
+        ]
+      },
+      "expected": "Mar 15: inkPeriod=false, Jul 15: inkPeriod=true"
+    },
+
+    "test_7_no_periods": {
+      "name": "No Periods — raw remanent, all outside k",
+      "input": {
+        "q": [],
+        "p": [],
+        "k": [],
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-05-01 12:00:00", "amount": 250}
+        ]
+      },
+      "expected": "remanent = 50, inkPeriod = false"
+    },
+
+    "test_8_boundary_inclusive": {
+      "name": "Boundary Inclusive — transaction exactly at start/end",
+      "input": {
+        "q": [{"fixed": 999, "start": "2023-07-01 00:00:00", "end": "2023-07-31 23:59:59"}],
+        "p": [],
+        "k": [{"start": "2023-07-01 00:00:00", "end": "2023-07-31 23:59:59"}],
+        "wage": 50000,
+        "transactions": [
+          {"date": "2023-07-01 00:00:00", "amount": 250},
+          {"date": "2023-07-31 23:59:59", "amount": 350}
+        ]
+      },
+      "expected": "Both transactions: remanent = 999, inkPeriod = true (boundaries are inclusive)"
+    }
+  },
+
+  "endpoint_4a_nps": {
+    "description": "POST /blackrock/challenge/v1/returns:nps",
+
+    "test_1_problem_statement": {
+      "name": "Problem Statement — age 29, wage 50000",
+      "input": {
+        "age": 29,
+        "wage": 50000,
+        "inflation": 5.5,
+        "q": [{"fixed": 0, "start": "2023-07-01 00:00:00", "end": "2023-07-31 23:59:59"}],
+        "p": [{"extra": 25, "start": "2023-10-01 08:00:00", "end": "2023-12-31 19:59:59"}],
+        "k": [
+          {"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"},
+          {"start": "2023-03-01 00:00:00", "end": "2023-11-30 23:59:59"}
+        ],
+        "transactions": [
+          {"date": "2023-02-28 15:49:20", "amount": 375},
+          {"date": "2023-07-01 21:59:00", "amount": 620},
+          {"date": "2023-10-12 20:15:30", "amount": 250},
+          {"date": "2023-12-17 08:09:45", "amount": 480},
+          {"date": "2023-12-17 08:09:45", "amount": -10}
+        ]
+      },
+      "expected": {
+        "totalTransactionAmount": 1725.0,
+        "totalCeiling": 1900.0,
+        "savingsByDates": [
+          {"amount": 145.0, "profit": 86.88, "taxBenefit": 0.0},
+          {"amount": 75.0, "profit": 44.94, "taxBenefit": 0.0}
+        ]
+      }
+    },
+
+    "test_2_high_income_tax_benefit": {
+      "name": "High Income — NPS Tax Benefit Applies",
+      "input": {
+        "age": 30,
+        "wage": 200000,
+        "inflation": 5.5,
+        "q": [],
+        "p": [],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "transactions": [
+          {"date": "2023-06-15 12:00:00", "amount": 50000},
+          {"date": "2023-09-15 12:00:00", "amount": 30000}
+        ]
+      },
+      "expected": "taxBenefit > 0 (annual income 24L falls in 30% slab, NPS deduction reduces tax)"
+    },
+
+    "test_3_old_age_minimum_years": {
+      "name": "Age 58 — Minimum 5 Years Investment",
+      "input": {
+        "age": 58,
+        "wage": 50000,
+        "inflation": 5.5,
+        "q": [],
+        "p": [],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "transactions": [
+          {"date": "2023-06-15 12:00:00", "amount": 250}
+        ]
+      },
+      "expected": "investment years = max(60-58, 5) = 5 (not 2)"
+    },
+
+    "test_4_young_age_long_horizon": {
+      "name": "Age 25 — 35 Year Horizon",
+      "input": {
+        "age": 25,
+        "wage": 50000,
+        "inflation": 5.5,
+        "q": [],
+        "p": [],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "transactions": [
+          {"date": "2023-06-15 12:00:00", "amount": 250}
+        ]
+      },
+      "expected": "investment years = 35, larger profit due to more compounding"
+    }
+  },
+
+  "endpoint_4b_index": {
+    "description": "POST /blackrock/challenge/v1/returns:index",
+
+    "test_1_problem_statement": {
+      "name": "Problem Statement — same input as NPS",
+      "input": {
+        "age": 29,
+        "wage": 50000,
+        "inflation": 5.5,
+        "q": [{"fixed": 0, "start": "2023-07-01 00:00:00", "end": "2023-07-31 23:59:59"}],
+        "p": [{"extra": 25, "start": "2023-10-01 08:00:00", "end": "2023-12-31 19:59:59"}],
+        "k": [
+          {"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"},
+          {"start": "2023-03-01 00:00:00", "end": "2023-11-30 23:59:59"}
+        ],
+        "transactions": [
+          {"date": "2023-02-28 15:49:20", "amount": 375},
+          {"date": "2023-07-01 21:59:00", "amount": 620},
+          {"date": "2023-10-12 20:15:30", "amount": 250},
+          {"date": "2023-12-17 08:09:45", "amount": 480},
+          {"date": "2023-12-17 08:09:45", "amount": -10}
+        ]
+      },
+      "expected": {
+        "totalTransactionAmount": 1725.0,
+        "totalCeiling": 1900.0,
+        "savingsByDates_k1": {"amount": 145.0, "return": 1829.5, "taxBenefit": 0.0},
+        "note": "Index returns significantly higher than NPS (14.49% vs 7.11%)"
+      }
+    },
+
+    "test_2_tax_benefit_always_zero": {
+      "name": "High Income — Index taxBenefit is ALWAYS 0",
+      "input": {
+        "age": 30,
+        "wage": 200000,
+        "inflation": 5.5,
+        "q": [],
+        "p": [],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "transactions": [
+          {"date": "2023-06-15 12:00:00", "amount": 50000}
+        ]
+      },
+      "expected": "taxBenefit = 0 regardless of income (Index has no tax benefit)"
+    }
+  },
+
+  "endpoint_5_performance": {
+    "description": "GET /blackrock/challenge/v1/performance",
+
+    "test_1_basic": {
+      "name": "Basic Health Check",
+      "input": "No body required — GET request",
+      "expected": {
+        "time": "1970-01-01 HH:mm:ss.SSS (uptime since JVM start)",
+        "memory": "XX.XX (heap used in MB)",
+        "threads": "integer (active thread count)"
+      }
+    }
+  },
+
+  "endpoint_6_optimize": {
+    "description": "POST /blackrock/challenge/v1/optimize (INNOVATION)",
+
+    "test_1_low_income_index_recommended": {
+      "name": "Low Income — Index Fund Recommended",
+      "input": {
+        "age": 29,
+        "wage": 50000,
+        "inflation": 5.5,
+        "q": [{"fixed": 0, "start": "2023-07-01 00:00:00", "end": "2023-07-31 23:59:59"}],
+        "p": [{"extra": 25, "start": "2023-10-01 08:00:00", "end": "2023-12-31 19:59:59"}],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "transactions": [
+          {"date": "2023-02-28 15:49:20", "amount": 375},
+          {"date": "2023-07-01 21:59:00", "amount": 620},
+          {"date": "2023-10-12 20:15:30", "amount": 250},
+          {"date": "2023-12-17 08:09:45", "amount": 480}
+        ]
+      },
+      "expected": "Recommendation: Index Fund (wage 50K = 6L annual < 7L, 0% tax slab, no NPS benefit)"
+    },
+
+    "test_2_high_income_nps_tax_matters": {
+      "name": "High Income — NPS Tax Benefit May Matter",
+      "input": {
+        "age": 35,
+        "wage": 200000,
+        "inflation": 5.5,
+        "q": [],
+        "p": [{"extra": 100, "start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "transactions": [
+          {"date": "2023-03-01 10:00:00", "amount": 5000},
+          {"date": "2023-06-01 10:00:00", "amount": 8000},
+          {"date": "2023-09-01 10:00:00", "amount": 3000},
+          {"date": "2023-12-01 10:00:00", "amount": 7000}
+        ]
+      },
+      "expected": "Shows NPS tax benefit > 0, compares effective NPS (profit + tax benefit) vs Index return"
+    },
+
+    "test_3_q_period_impact": {
+      "name": "Q Period Impact Analysis",
+      "input": {
+        "age": 29,
+        "wage": 50000,
+        "inflation": 5.5,
+        "q": [{"fixed": 0, "start": "2023-01-01 00:00:00", "end": "2023-06-30 23:59:59"}],
+        "p": [],
+        "k": [{"start": "2023-01-01 00:00:00", "end": "2023-12-31 23:59:59"}],
+        "transactions": [
+          {"date": "2023-03-15 12:00:00", "amount": 250},
+          {"date": "2023-04-15 12:00:00", "amount": 350},
+          {"date": "2023-09-15 12:00:00", "amount": 450}
+        ]
+      },
+      "expected": "qPeriodImpact shows Mar+Apr remanents (50+50=100) lost to q=0, Sep unaffected"
+    }
+  },
+
+  "endpoint_7_analytics": {
+    "description": "GET /blackrock/challenge/v1/analytics (INNOVATION)",
+
+    "test_1_after_calling_endpoints": {
+      "name": "Call Several Endpoints Then Check Analytics",
+      "steps": [
+        "1. POST /transactions:parse with test data",
+        "2. POST /transactions:validator with test data",
+        "3. POST /returns:nps with test data",
+        "4. GET /analytics"
+      ],
+      "expected": "Shows 3 endpoints with totalCalls=1 each, plus analytics call itself, with processing times"
+    }
+  }
+}
