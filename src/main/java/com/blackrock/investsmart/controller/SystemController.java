@@ -1,0 +1,50 @@
+package com.blackrock.investsmart.controller;
+
+import com.blackrock.investsmart.model.response.SystemPerformanceResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.lang.management.ManagementFactory;
+import java.time.Duration;
+
+/**
+ * System operations — performance metrics and health monitoring.
+ */
+@RestController
+@RequestMapping("/blackrock/challenge/v1")
+@Tag(name = "System", description = "Performance metrics and operational monitoring")
+public class SystemController {
+
+    private static final DateTimeFormatter TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+
+    @GetMapping("/performance")
+    @Operation(summary = "Report system execution metrics — uptime, memory, threads")
+    public ResponseEntity<SystemPerformanceResponse> getPerformanceMetrics() {
+
+        // Uptime: format as "1970-01-01 HH:mm:ss.SSS"
+        long uptimeMs = ManagementFactory.getRuntimeMXBean().getUptime();
+        Duration uptime = Duration.ofMillis(uptimeMs);
+        long hours = uptime.toHours();
+        long minutes = uptime.toMinutesPart();
+        long seconds = uptime.toSecondsPart();
+        long millis = uptime.toMillisPart();
+        String timeStr = String.format("1970-01-01 %02d:%02d:%02d.%03d", hours, minutes, seconds, millis);
+
+        // Memory: heap + non-heap in MB
+        Runtime runtime = Runtime.getRuntime();
+        double usedMemoryMB = (runtime.totalMemory() - runtime.freeMemory()) / (1024.0 * 1024.0);
+        String memoryStr = String.format("%.2f", usedMemoryMB);
+
+        // Threads: active count
+        int threadCount = Thread.activeCount();
+
+        return ResponseEntity.ok(SystemPerformanceResponse.builder()
+                .time(timeStr)
+                .memory(memoryStr)
+                .threads(threadCount)
+                .build());
+    }
+}

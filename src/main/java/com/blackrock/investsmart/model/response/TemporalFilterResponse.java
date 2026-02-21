@@ -1,6 +1,6 @@
 package com.blackrock.investsmart.model.response;
 
-import com.blackrock.investsmart.model.InvalidTransaction;
+import com.blackrock.investsmart.model.domain.InvalidTransaction;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

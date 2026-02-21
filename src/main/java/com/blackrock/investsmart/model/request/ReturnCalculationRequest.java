@@ -1,9 +1,9 @@
 package com.blackrock.investsmart.model.request;
 
-import com.blackrock.investsmart.model.Expense;
-import com.blackrock.investsmart.model.KPeriod;
-import com.blackrock.investsmart.model.PPeriod;
-import com.blackrock.investsmart.model.QPeriod;
+import com.blackrock.investsmart.model.domain.Expense;
+import com.blackrock.investsmart.model.domain.KPeriod;
+import com.blackrock.investsmart.model.domain.PPeriod;
+import com.blackrock.investsmart.model.domain.QPeriod;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
