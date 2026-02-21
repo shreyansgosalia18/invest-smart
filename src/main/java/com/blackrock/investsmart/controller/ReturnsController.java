@@ -3,6 +3,8 @@ package com.blackrock.investsmart.controller;
 import com.blackrock.investsmart.model.request.ReturnCalculationRequest;
 import com.blackrock.investsmart.model.response.IndexReturnResponse;
 import com.blackrock.investsmart.model.response.NpsReturnResponse;
+import com.blackrock.investsmart.model.response.SavingsOptimizationResponse;
+import com.blackrock.investsmart.service.SavingsOptimizationService;
 import com.blackrock.investsmart.service.TransactionProcessingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class ReturnsController {
 
     private final TransactionProcessingService processingService;
+    private final SavingsOptimizationService optimizationService;
 
     @PostMapping("/returns:nps")
     @Operation(summary = "Calculate NPS returns with profit and tax benefit per k period")
@@ -33,5 +36,12 @@ public class ReturnsController {
     public ResponseEntity<IndexReturnResponse> calculateIndexReturns(
             @RequestBody ReturnCalculationRequest request) {
         return ResponseEntity.ok(processingService.calculateIndexReturns(request));
+    }
+
+    @PostMapping("/optimize")
+    @Operation(summary = "Analyze savings and get actionable optimization recommendations")
+    public ResponseEntity<SavingsOptimizationResponse> optimizeSavings(
+            @RequestBody ReturnCalculationRequest request) {
+        return ResponseEntity.ok(optimizationService.optimize(request));
     }
 }
